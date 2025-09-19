@@ -1,7 +1,8 @@
 import Fastify from "fastify";
 import { z } from "zod";
 import { env, isProduction } from "./config.js";
-import { User, hashPassword, verifyPassword, generateToken, verifyToken } from "./auth.js";
+import type { User } from "./auth.js";
+import { hashPassword, verifyPassword, generateToken, verifyToken } from "./auth.js";
 
 const app = Fastify({
   logger: !isProduction,
@@ -24,6 +25,16 @@ await app.register(import("@fastify/rate-limit"), {
 
 // In-memory store (replace with database in production)
 const users: User[] = [];
+
+// Extend FastifyRequest to include user
+declare module 'fastify' {
+  interface FastifyRequest {
+    user?: {
+      userId: string;
+      username: string;
+    };
+  }
+}
 
 // Authentication middleware
 async function authenticate(request: any, reply: any) {
@@ -96,7 +107,7 @@ app.post("/auth/register", async (req, reply) => {
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      reply.code(400).send({ error: 'Validation failed', details: error.errors });
+      reply.code(400).send({ error: 'Validation failed', details: error.issues });
     } else {
       reply.code(500).send({ error: 'Internal server error' });
     }
@@ -128,7 +139,7 @@ app.post("/auth/login", async (req, reply) => {
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      reply.code(400).send({ error: 'Validation failed', details: error.errors });
+      reply.code(400).send({ error: 'Validation failed', details: error.issues });
     } else {
       reply.code(500).send({ error: 'Internal server error' });
     }
@@ -137,7 +148,12 @@ app.post("/auth/login", async (req, reply) => {
 
 // Get current user (protected route)
 app.get("/auth/me", { preHandler: authenticate }, async (req, reply) => {
-  const user = users.find(u => u.id === req.user.userId);
+  if (!req.user) {
+    reply.code(401).send({ error: 'User not authenticated' });
+    return;
+  }
+  
+  const user = users.find(u => u.id === req.user!.userId);
   if (!user) {
     reply.code(404).send({ error: 'User not found' });
     return;
@@ -169,7 +185,7 @@ app.setErrorHandler((error, request, reply) => {
   if (error instanceof z.ZodError) {
     reply.code(400).send({
       error: 'Validation failed',
-      details: error.errors,
+      details: error.issues,
     });
   } else {
     reply.code(500).send({
