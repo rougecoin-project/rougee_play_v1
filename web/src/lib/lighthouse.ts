@@ -16,10 +16,15 @@ export interface FileInfo {
 export interface MusicMetadata {
   title: string;
   artist: string;
-  album: string;
-  duration: number;
+  ticker: string;
+  description: string;
+  album?: string;
+  duration?: number;
   genre?: string;
   releaseDate?: string;
+  // User identification (will be added automatically)
+  owner?: string;
+  uploadedBy?: string;
 }
 
 export interface AlbumMetadata {
@@ -45,45 +50,38 @@ class LighthouseService {
   async uploadMusicFile(
     file: File, 
     metadata: MusicMetadata,
-    signer?: unknown  // Will be properly typed when integrated with wagmi
+    signer: any // Lighthouse signer object
   ): Promise<{ hash: string; url: string }> {
     try {
-      // Create metadata JSON
-      const metadataBlob = new Blob([JSON.stringify(metadata)], { 
-        type: 'application/json' 
-      });
-      const metadataFile = new File([metadataBlob], 'metadata.json');
-
-      // Upload music file
-      const musicUpload = await lighthouse.upload([file], this.apiKey);
+      // Upload music file first (with signer for authentication)
+      const musicUpload = await lighthouse.upload([file], this.apiKey, signer);
       const musicHash = musicUpload.data.Hash;
 
-      // Upload metadata
-      const metadataUpload = await lighthouse.upload([metadataFile], this.apiKey);
-      const metadataHash = metadataUpload.data.Hash;
-
-      // Create combined metadata with IPFS hashes
-      const combinedMetadata = {
+      // Create complete metadata with IPFS hash and technical details
+      const completeMetadata = {
         ...metadata,
+        // User/Owner identification
+        owner: '', // Will be set by the calling component with wallet address
+        uploadedBy: '', // Will be set by the calling component with wallet address
+        // IPFS and technical details
         audioHash: musicHash,
         audioUrl: `https://gateway.lighthouse.storage/ipfs/${musicHash}`,
-        metadataHash: metadataHash,
         uploadedAt: new Date().toISOString(),
         fileSize: file.size,
         fileName: file.name,
         mimeType: file.type
       };
 
-      // Upload final combined metadata
-      const finalMetadataBlob = new Blob([JSON.stringify(combinedMetadata)], { 
+      // Upload the complete metadata file (with signer for authentication)
+      const metadataBlob = new Blob([JSON.stringify(completeMetadata, null, 2)], { 
         type: 'application/json' 
       });
-      const finalMetadataFile = new File([finalMetadataBlob], 'final-metadata.json');
-      const finalUpload = await lighthouse.upload([finalMetadataFile], this.apiKey);
+      const metadataFile = new File([metadataBlob], 'metadata.json');
+      const metadataUpload = await lighthouse.upload([metadataFile], this.apiKey, signer);
 
       return {
-        hash: finalUpload.data.Hash,
-        url: `https://gateway.lighthouse.storage/ipfs/${finalUpload.data.Hash}`
+        hash: metadataUpload.data.Hash,
+        url: `https://gateway.lighthouse.storage/ipfs/${metadataUpload.data.Hash}`
       };
     } catch (error) {
       console.error('Error uploading music file:', error);
@@ -95,11 +93,11 @@ class LighthouseService {
   async uploadAlbumArt(
     imageFile: File,
     metadata: AlbumMetadata,
-    signer?: unknown  // Will be properly typed when integrated with wagmi
+    signer: any // Lighthouse signer object
   ): Promise<{ hash: string; url: string }> {
     try {
-      // Upload image
-      const imageUpload = await lighthouse.upload([imageFile], this.apiKey);
+      // Upload image (with signer for authentication)
+      const imageUpload = await lighthouse.upload([imageFile], this.apiKey, signer);
       const imageHash = imageUpload.data.Hash;
 
       // Create metadata with image hash
@@ -113,12 +111,12 @@ class LighthouseService {
         imageMimeType: imageFile.type
       };
 
-      // Upload metadata
+      // Upload metadata (with signer for authentication)
       const metadataBlob = new Blob([JSON.stringify(albumMetadata)], { 
         type: 'application/json' 
       });
       const metadataFile = new File([metadataBlob], 'album-metadata.json');
-      const metadataUpload = await lighthouse.upload([metadataFile], this.apiKey);
+      const metadataUpload = await lighthouse.upload([metadataFile], this.apiKey, signer);
 
       return {
         hash: metadataUpload.data.Hash,
@@ -135,7 +133,7 @@ class LighthouseService {
     tracks: { file: File; metadata: MusicMetadata }[],
     albumArt: File,
     albumMetadata: AlbumMetadata,
-    signer?: unknown  // Will be properly typed when integrated with wagmi
+    signer: any // Lighthouse signer object
   ): Promise<{ hash: string; url: string; trackHashes: string[] }> {
     try {
       // Upload album artwork first
@@ -163,12 +161,12 @@ class LighthouseService {
         uploadedAt: new Date().toISOString()
       };
 
-      // Upload final album metadata
+      // Upload final album metadata (with signer for authentication)
       const albumBlob = new Blob([JSON.stringify(completeAlbumMetadata)], { 
         type: 'application/json' 
       });
       const albumFile = new File([albumBlob], 'complete-album.json');
-      const finalUpload = await lighthouse.upload([albumFile], this.apiKey);
+      const finalUpload = await lighthouse.upload([albumFile], this.apiKey, signer);
 
       return {
         hash: finalUpload.data.Hash,
