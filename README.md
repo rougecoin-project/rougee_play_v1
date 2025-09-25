@@ -1,158 +1,201 @@
-# Rougee Play API v1
+# 🎵 Rougee Play - Web3 Music Platform
 
-A secure, production-ready API built with Fastify, TypeScript, and modern security practices.
+A decentralized music platform built with Next.js 15, Web3 wallet integration, and a retro terminal aesthetic.
 
 ## 🚀 Features
 
-- **Authentication & Authorization**: JWT-based auth with bcrypt password hashing
-- **Rate Limiting**: Prevents abuse with configurable limits
-- **Security Headers**: Helmet.js for security headers
-- **CORS Protection**: Configurable cross-origin resource sharing
-- **Input Validation**: Zod schemas for request validation
-- **Error Handling**: Comprehensive error handling with proper HTTP status codes
-- **Environment Configuration**: Secure environment variable management
-- **TypeScript**: Full type safety and modern JavaScript features
+- **Web3 Native**: Connect with MetaMask, Base Wallet, and other wallets
+- **Music Upload**: Upload audio files with progress tracking
+- **Decentralized**: Built on Base blockchain with IPFS integration ready
+- **Retro Terminal UI**: Minimal black theme with green text and scan lines
+- **Real-time Feedback**: Console-style logging and status updates
 
-## 📋 Prerequisites
+## 🛠 Tech Stack
 
+### Frontend (Next.js)
+- **Next.js 15** with Turbopack
+- **TypeScript** for type safety
+- **Tailwind CSS** for styling
+- **RainbowKit** for wallet connections
+- **Wagmi** for Ethereum interactions
+- **Viem** for blockchain utilities
+
+### Backend (API)
+- **Fastify** server with TypeScript
+- **JWT Authentication** 
+- **File Upload** with multipart support
+- **CORS** configuration
+- **Rate limiting** and security
+
+### Web3 Integration
+- **Base Network** support
+- **Multiple Wallets** (MetaMask, Base Wallet, WalletConnect)
+- **Chain Switching** capabilities
+- **Account Management**
+
+## 📁 Project Structure
+
+```
+rougee_play_v1/
+├── api/                    # Fastify backend server
+│   ├── src/
+│   │   ├── auth.ts        # JWT authentication
+│   │   ├── config.ts      # Environment configuration
+│   │   └── server.ts      # Main server file
+│   ├── uploads/           # Music file storage
+│   └── .env               # Environment variables
+├── web/                   # Next.js frontend
+│   ├── src/
+│   │   ├── app/
+│   │   │   ├── globals.css    # Global styles
+│   │   │   ├── layout.tsx     # Root layout
+│   │   │   └── page.tsx       # Home page
+│   │   ├── components/
+│   │   │   ├── providers/
+│   │   │   │   └── Web3Provider.tsx
+│   │   │   ├── LandingPage.tsx
+│   │   │   └── UploadPage.tsx
+│   │   └── lib/
+│   │       └── web3.ts        # Web3 configuration
+│   └── .env.local             # Environment variables
+└── index.html                 # Legacy frontend (replaced by Next.js)
+```
+
+## � Setup & Installation
+
+### Prerequisites
 - Node.js 18+ 
 - npm or yarn
+- Git
 
-## 🛠️ Setup
+### 1. Clone Repository
+```bash
+git clone https://github.com/rougecoin-project/rougee_play_v1.git
+cd rougee_play_v1
+```
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/rougecoin-project/rougee_play_v1.git
-   cd rougee_play_v1
-   ```
+### 2. Setup Backend API
+```bash
+cd api
+npm install
+cp env.example .env
+# Edit .env with your configuration
+npm run dev
+```
 
-2. **Install dependencies**
-   ```bash
-   cd api
-   npm install
-   ```
+### 3. Setup Frontend
+```bash
+cd ../web
+npm install
+cp .env.local.example .env.local
+# Edit .env.local with your WalletConnect Project ID
+npm run dev
+```
 
-3. **Environment Configuration**
-   
-   Copy the example environment file:
-   ```bash
-   cp env.example .env
-   ```
-   
-   **⚠️ IMPORTANT**: Update the `.env` file with your own values:
-   ```env
-   # Server Configuration
-   PORT=3001
-   NODE_ENV=development
-   
-   # Security - CHANGE THESE IN PRODUCTION!
-   JWT_SECRET=your-super-secret-jwt-key-change-this-in-production-min-32-chars
-   BCRYPT_ROUNDS=12
-   
-   # Rate Limiting
-   RATE_LIMIT_MAX=100
-   RATE_LIMIT_TIME_WINDOW=60000
-   
-   # CORS
-   CORS_ORIGIN=http://localhost:3000
-   ```
+### 4. Access Application
+- **Frontend**: http://localhost:3000
+- **Backend API**: http://localhost:3001
 
-4. **Start the development server**
-   ```bash
-   npm run dev
-   ```
+## 🔐 Environment Variables
 
-## 🔐 Security Features
+### Backend (.env)
+```env
+PORT=3001
+NODE_ENV=development
+JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
+BCRYPT_ROUNDS=12
+RATE_LIMIT_MAX=100
+RATE_LIMIT_TIME_WINDOW=60000
+CORS_ORIGIN=http://localhost:3000
+```
+
+### Frontend (.env.local)
+```env
+NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=your-walletconnect-project-id
+NEXT_PUBLIC_API_URL=http://localhost:3001
+```
+
+## 🎨 Design System
+
+### Color Palette
+- **Background**: `#000000` (Pure Black)
+- **Text**: `#00ff00` (Terminal Green)
+- **Accent**: `#ff0080` (Neon Pink)
+- **Borders**: `#333333` (Dark Gray)
+- **Muted**: `#888888` (Gray)
+
+### Typography
+- **Font**: JetBrains Mono (Monospace)
+- **Style**: Terminal/Console aesthetic
+- **Effects**: Text glow, blinking cursor
+
+## 🌐 Supported Networks
+
+- **Base Mainnet**
+- **Base Sepolia** (Testnet)
+- **Ethereum Mainnet**
+- **Sepolia** (Testnet)
+
+## � API Endpoints
 
 ### Authentication
-- JWT tokens with 7-day expiration
-- bcrypt password hashing (12 rounds)
-- Protected routes with middleware
-
-### Rate Limiting
-- 100 requests per minute by default
-- Configurable via environment variables
-
-### Security Headers
-- Helmet.js for security headers
-- CORS protection
-- Input validation with Zod
-
-### Environment Security
-- All sensitive data in environment variables
-- Example file provided (never commit `.env`)
-
-## 📚 API Endpoints
-
-### Public Endpoints
-- `GET /` - API information
-- `GET /health` - Health check
 - `POST /auth/register` - User registration
 - `POST /auth/login` - User login
+- `GET /auth/me` - Get current user
 
-### Protected Endpoints (require Bearer token)
-- `GET /auth/me` - Get current user info
-- `GET /users` - List all users (public info only)
+### Music Upload
+- `POST /upload/music` - Upload music file
+- `GET /music/my-files` - Get user's files
+- `GET /music/files` - Get all files
+- `GET /music/stream/:fileId` - Stream music file
 
-## 🔧 Development
+### Health
+- `GET /` - API info
+- `GET /health` - Health check
 
+## 🚀 Deployment
+
+### Frontend (Vercel)
 ```bash
-# Start development server with hot reload
-npm run dev
-
-# Build for production
+cd web
 npm run build
+```
 
-# Start production server
+### Backend (Railway/Heroku)
+```bash
+cd api
+npm run build
 npm start
 ```
 
-## 🚀 Production Deployment
+## 🤝 Contributing
 
-1. **Set production environment variables**
-2. **Use a proper database** (replace in-memory storage)
-3. **Enable HTTPS**
-4. **Set up monitoring and logging**
-5. **Configure reverse proxy** (nginx, etc.)
+1. Fork the repository
+2. Create feature branch (`git checkout -b feature/new-feature`)
+3. Commit changes (`git commit -am 'Add new feature'`)
+4. Push branch (`git push origin feature/new-feature`)
+5. Open Pull Request
 
-## 📝 Example Usage
+## � License
 
-### Register a new user
-```bash
-curl -X POST http://localhost:3001/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{
-    "username": "johndoe",
-    "email": "john@example.com",
-    "password": "securepassword123"
-  }'
-```
+MIT License - see LICENSE file for details
 
-### Login
-```bash
-curl -X POST http://localhost:3001/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "john@example.com",
-    "password": "securepassword123"
-  }'
-```
+## 🔮 Roadmap
 
-### Access protected route
-```bash
-curl -X GET http://localhost:3001/auth/me \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN"
-```
+- [ ] IPFS integration for decentralized storage
+- [ ] Music NFT minting
+- [ ] Token-gated access
+- [ ] Artist royalty smart contracts
+- [ ] Mobile app (React Native)
+- [ ] Playlist functionality
+- [ ] Social features
 
-## ⚠️ Security Notes
+## 💬 Community
 
-- **Never commit `.env` files**
-- **Change JWT_SECRET in production**
-- **Use HTTPS in production**
-- **Implement proper database in production**
-- **Add monitoring and logging**
-- **Regular security updates**
+- **GitHub**: [rougecoin-project/rougee_play_v1](https://github.com/rougecoin-project/rougee_play_v1)
+- **Discord**: Coming soon
+- **Twitter**: Coming soon
 
-## 📄 License
+---
 
-ISC
+Built with ❤️ for the decentralized music revolution

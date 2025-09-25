@@ -3,9 +3,29 @@ import { z } from "zod";
 import { env, isProduction } from "./config.js";
 import type { User } from "./auth.js";
 import { hashPassword, verifyPassword, generateToken, verifyToken } from "./auth.js";
+import { createWriteStream, createReadStream } from "fs";
+import { promises as fs } from "fs";
+import { join, extname } from "path";
+import { fileURLToPath } from "url";
+import { dirname } from "path";
 
 const app = Fastify({
   logger: !isProduction,
+});
+
+// Get current directory for ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const uploadsDir = join(__dirname, '..', 'uploads');
+
+// Ensure uploads directory exists
+await fs.mkdir(uploadsDir, { recursive: true });
+
+// Register multipart plugin for file uploads
+await app.register(import("@fastify/multipart"), {
+  limits: {
+    fileSize: 50 * 1024 * 1024, // 50MB limit
+  },
 });
 
 // Security plugins
@@ -25,6 +45,19 @@ await app.register(import("@fastify/rate-limit"), {
 
 // In-memory store (replace with database in production)
 const users: User[] = [];
+
+// Music file storage (replace with database in production)
+interface MusicFile {
+  id: string;
+  filename: string;
+  originalName: string;
+  mimeType: string;
+  size: number;
+  uploadedBy: string;
+  uploadedAt: Date;
+}
+
+const musicFiles: MusicFile[] = [];
 
 // Extend FastifyRequest to include user
 declare module 'fastify' {
@@ -176,6 +209,160 @@ app.get("/users", { preHandler: authenticate }, async (req, reply) => {
   }));
   
   reply.send(publicUsers);
+});
+
+// Upload music file (protected route)
+app.post("/upload/music", { preHandler: authenticate }, async (req, reply) => {
+  try {
+    if (!req.user) {
+      reply.code(401).send({ error: 'User not authenticated' });
+      return;
+    }
+
+    const data = await req.file();
+    if (!data) {
+      reply.code(400).send({ error: 'No file uploaded' });
+      return;
+    }
+
+    // Validate file type (audio files only)
+    const allowedMimeTypes = [
+      'audio/mpeg',
+      'audio/mp3',
+      'audio/wav', 
+      'audio/flac',
+      'audio/aac',
+      'audio/ogg',
+      'audio/m4a'
+    ];
+
+    if (!allowedMimeTypes.includes(data.mimetype)) {
+      reply.code(400).send({ 
+        error: 'Invalid file type. Only audio files are allowed.',
+        allowedTypes: allowedMimeTypes
+      });
+      return;
+    }
+
+    // Generate unique filename
+    const fileId = crypto.randomUUID();
+    const fileExtension = extname(data.filename || '');
+    const filename = `${fileId}${fileExtension}`;
+    const filepath = join(uploadsDir, filename);
+
+    // Save file to disk
+    const writeStream = createWriteStream(filepath);
+    await data.file.pipe(writeStream);
+    
+    // Wait for the file to be completely written
+    await new Promise<void>((resolve, reject) => {
+      writeStream.on('finish', () => resolve());
+      writeStream.on('error', reject);
+    });
+
+    // Get file stats
+    const stats = await fs.stat(filepath);
+
+    // Store file metadata
+    const musicFile: MusicFile = {
+      id: fileId,
+      filename,
+      originalName: data.filename || 'unknown',
+      mimeType: data.mimetype,
+      size: stats.size,
+      uploadedBy: req.user.userId,
+      uploadedAt: new Date(),
+    };
+
+    musicFiles.push(musicFile);
+
+    reply.code(201).send({
+      message: 'File uploaded successfully',
+      file: {
+        id: musicFile.id,
+        originalName: musicFile.originalName,
+        size: musicFile.size,
+        mimeType: musicFile.mimeType,
+        uploadedAt: musicFile.uploadedAt,
+      },
+    });
+
+  } catch (error) {
+    app.log.error(error);
+    reply.code(500).send({ error: 'File upload failed' });
+  }
+});
+
+// Get user's uploaded music files (protected route)
+app.get("/music/my-files", { preHandler: authenticate }, async (req, reply) => {
+  if (!req.user) {
+    reply.code(401).send({ error: 'User not authenticated' });
+    return;
+  }
+
+  const userFiles = musicFiles
+    .filter(file => file.uploadedBy === req.user!.userId)
+    .map(file => ({
+      id: file.id,
+      originalName: file.originalName,
+      size: file.size,
+      mimeType: file.mimeType,
+      uploadedAt: file.uploadedAt,
+    }));
+
+  reply.send({ files: userFiles });
+});
+
+// Get all music files (protected route)
+app.get("/music/files", { preHandler: authenticate }, async (req, reply) => {
+  const allFiles = musicFiles.map(file => {
+    const uploader = users.find(u => u.id === file.uploadedBy);
+    return {
+      id: file.id,
+      originalName: file.originalName,
+      size: file.size,
+      mimeType: file.mimeType,
+      uploadedAt: file.uploadedAt,
+      uploadedBy: uploader?.username || 'Unknown',
+    };
+  });
+
+  reply.send({ files: allFiles });
+});
+
+// Stream music file (protected route)
+app.get("/music/stream/:fileId", { preHandler: authenticate }, async (req, reply) => {
+  try {
+    const { fileId } = req.params as { fileId: string };
+    
+    const musicFile = musicFiles.find(f => f.id === fileId);
+    if (!musicFile) {
+      reply.code(404).send({ error: 'File not found' });
+      return;
+    }
+
+    const filepath = join(uploadsDir, musicFile.filename);
+    
+    // Check if file exists
+    try {
+      await fs.access(filepath);
+    } catch {
+      reply.code(404).send({ error: 'File not found on disk' });
+      return;
+    }
+
+    // Set appropriate headers
+    reply.header('Content-Type', musicFile.mimeType);
+    reply.header('Content-Disposition', `inline; filename="${musicFile.originalName}"`);
+    
+    // Stream the file
+    const fileStream = createReadStream(filepath);
+    return reply.send(fileStream);
+
+  } catch (error) {
+    app.log.error(error);
+    reply.code(500).send({ error: 'Failed to stream file' });
+  }
 });
 
 // Error handling

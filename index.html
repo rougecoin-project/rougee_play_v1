@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rougee Play - Music Upload</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #0a0a0a;
+            background-image: 
+                radial-gradient(circle at 25% 25%, #1a1a1a 0%, transparent 50%),
+                radial-gradient(circle at 75% 75%, #151515 0%, transparent 50%);
+            background-size: 100px 100px;
+            min-height: 100vh;
+            color: #e0e0e0;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                linear-gradient(45deg, transparent 40%, rgba(255, 107, 107, 0.02) 50%, transparent 60%),
+                linear-gradient(-45deg, transparent 40%, rgba(75, 181, 67, 0.02) 50%, transparent 60%);
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            position: relative;
+        }
+
+        .header h1 {
+            font-size: 2.8rem;
+            margin-bottom: 8px;
+            font-weight: 800;
+            background: linear-gradient(45deg, #ff6b6b, #ffd93d, #6bcf7f, #4dabf7);
+            background-size: 400% 400%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: gradientShift 3s ease-in-out infinite;
+        }
+
+        @keyframes gradientShift {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        .header p {
+            font-size: 1rem;
+            color: #666;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+        }
+
+        .card {
+            background: rgba(15, 15, 15, 0.8);
+            border: 1px solid #222;
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 20px;
+            backdrop-filter: blur(20px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .auth-section {
+            display: none;
+        }
+
+        .auth-section.active {
+            display: block;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #ccc;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 16px;
+            background: rgba(30, 30, 30, 0.8);
+            border: 1px solid #333;
+            border-radius: 12px;
+            font-size: 16px;
+            color: #e0e0e0;
+            transition: all 0.3s ease;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #ff6b6b;
+            background: rgba(40, 40, 40, 0.9);
+            box-shadow: 0 0 0 3px rgba(255, 107, 107, 0.1);
+        }
+
+        .form-group input::placeholder {
+            color: #666;
+        }
+
+        .btn {
+            background: linear-gradient(45deg, #ff6b6b, #ff8e8e);
+            color: white;
+            padding: 14px 28px;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-right: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(255, 107, 107, 0.3);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(45deg, #333, #555);
+            border: 1px solid #444;
+        }
+
+        .btn-secondary:hover {
+            background: linear-gradient(45deg, #444, #666);
+            box-shadow: 0 10px 25px rgba(68, 68, 68, 0.3);
+        }
+
+        .upload-area {
+            border: 2px dashed #444;
+            border-radius: 16px;
+            padding: 60px 40px;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            margin-bottom: 24px;
+            background: rgba(20, 20, 20, 0.5);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .upload-area::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 107, 107, 0.1), transparent);
+            transition: left 0.8s ease;
+        }
+
+        .upload-area:hover::before {
+            left: 100%;
+        }
+
+        .upload-area:hover {
+            border-color: #ff6b6b;
+            background: rgba(30, 30, 30, 0.8);
+            transform: translateY(-2px);
+        }
+
+        .upload-area.drag-over {
+            border-color: #ff6b6b;
+            background: rgba(255, 107, 107, 0.1);
+            transform: scale(1.02);
+        }
+
+        .upload-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+            background: linear-gradient(45deg, #ff6b6b, #ffd93d);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .upload-area h3 {
+            color: #fff;
+            font-size: 24px;
+            margin-bottom: 8px;
+            font-weight: 700;
+        }
+
+        .upload-area p {
+            color: #999;
+            font-size: 16px;
+            margin-bottom: 4px;
+        }
+
+        .upload-area small {
+            color: #666;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background-color: rgba(40, 40, 40, 0.8);
+            border-radius: 6px;
+            overflow: hidden;
+            margin: 20px 0;
+            display: none;
+            position: relative;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(45deg, #ff6b6b, #ffd93d);
+            width: 0%;
+            transition: width 0.3s ease;
+            border-radius: 6px;
+            position: relative;
+        }
+
+        .progress-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+            animation: shimmer 1.5s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        .message {
+            padding: 16px 20px;
+            border-radius: 12px;
+            margin: 20px 0;
+            display: none;
+            font-weight: 500;
+            border: 1px solid;
+        }
+
+        .message.success {
+            background: rgba(75, 181, 67, 0.15);
+            color: #4bb543;
+            border-color: rgba(75, 181, 67, 0.3);
+        }
+
+        .message.error {
+            background: rgba(255, 107, 107, 0.15);
+            color: #ff6b6b;
+            border-color: rgba(255, 107, 107, 0.3);
+        }
+
+        .files-list {
+            margin-top: 30px;
+        }
+
+        .file-item {
+            background: rgba(25, 25, 25, 0.8);
+            border: 1px solid #333;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .file-item::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 4px;
+            height: 100%;
+            background: linear-gradient(45deg, #ff6b6b, #ffd93d);
+            transform: scaleY(0);
+            transition: transform 0.3s ease;
+        }
+
+        .file-item:hover::before {
+            transform: scaleY(1);
+        }
+
+        .file-item:hover {
+            background: rgba(35, 35, 35, 0.9);
+            border-color: #444;
+            transform: translateX(8px);
+        }
+
+        .file-info {
+            display: flex;
+            align-items: center;
+        }
+
+        .file-icon {
+            font-size: 32px;
+            margin-right: 16px;
+            background: linear-gradient(45deg, #ff6b6b, #ffd93d);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .file-details h4 {
+            margin: 0 0 6px 0;
+            font-size: 18px;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .file-details small {
+            color: #888;
+            font-size: 13px;
+            letter-spacing: 0.3px;
+        }
+
+        .file-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn-small {
+            padding: 8px 16px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .tabs {
+            display: flex;
+            margin-bottom: 24px;
+            background: rgba(20, 20, 20, 0.8);
+            border-radius: 12px;
+            padding: 6px;
+            border: 1px solid #333;
+        }
+
+        .tab {
+            padding: 12px 20px;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            font-weight: 500;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #888;
+            flex: 1;
+            text-align: center;
+        }
+
+        .tab:hover {
+            color: #ccc;
+            background: rgba(40, 40, 40, 0.6);
+        }
+
+        .tab.active {
+            background: linear-gradient(45deg, #ff6b6b, #ff8e8e);
+            color: white;
+            font-weight: 600;
+            box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+            font-style: italic;
+        }
+
+        .loading::after {
+            content: '...';
+            animation: dots 2s infinite;
+        }
+
+        @keyframes dots {
+            0%, 20% { content: '.'; }
+            40% { content: '..'; }
+            60% { content: '...'; }
+            80%, 100% { content: ''; }
+        }
+
+        /* Scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #1a1a1a;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #444;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+
+        /* Additional modern touches */
+        .welcome-section {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding: 16px 0;
+            border-bottom: 1px solid #333;
+        }
+
+        .welcome-message {
+            font-size: 18px;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .tab-content {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .auth-section h2 {
+            color: #fff;
+            margin-bottom: 24px;
+            font-weight: 700;
+            font-size: 24px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎵 Rougee Play</h1>
+            <p>Upload and share your music</p>
+        </div>
+
+        <!-- Authentication Section -->
+        <div id="auth-card" class="card">
+            <div class="tabs">
+                <div class="tab active" onclick="showAuthTab('login')">Login</div>
+                <div class="tab" onclick="showAuthTab('register')">Register</div>
+            </div>
+
+            <div id="login-section" class="auth-section active">
+                <h2>Login</h2>
+                <form id="login-form">
+                    <div class="form-group">
+                        <label for="login-email">Email</label>
+                        <input type="email" id="login-email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="login-password">Password</label>
+                        <input type="password" id="login-password" required>
+                    </div>
+                    <button type="submit" class="btn">Login</button>
+                </form>
+            </div>
+
+            <div id="register-section" class="auth-section">
+                <h2>Register</h2>
+                <form id="register-form">
+                    <div class="form-group">
+                        <label for="register-username">Username</label>
+                        <input type="text" id="register-username" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="register-email">Email</label>
+                        <input type="email" id="register-email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="register-password">Password</label>
+                        <input type="password" id="register-password" required minlength="8">
+                    </div>
+                    <button type="submit" class="btn">Register</button>
+                </form>
+            </div>
+
+            <div class="message" id="auth-message"></div>
+        </div>
+
+        <!-- Main App Section -->
+        <div id="app-section" class="hidden">
+            <div class="card">
+                <div class="tabs">
+                    <div class="tab active" onclick="showTab('upload')">Upload Music</div>
+                    <div class="tab" onclick="showTab('my-files')">My Files</div>
+                    <div class="tab" onclick="showTab('all-files')">All Files</div>
+                </div>
+
+                <div class="welcome-section">
+                    <span class="welcome-message" id="welcome-message">Welcome!</span>
+                    <button class="btn btn-secondary" onclick="logout()">Logout</button>
+                </div>
+
+                <!-- Upload Tab -->
+                <div id="upload-tab" class="tab-content">
+                    <div class="upload-area" id="upload-area">
+                        <div class="upload-icon">🎵</div>
+                        <h3>Drop your music files here</h3>
+                        <p>or click to browse</p>
+                        <p><small>Supported formats: MP3, WAV, FLAC, AAC, OGG, M4A</small></p>
+                        <input type="file" id="file-input" accept="audio/*" multiple style="display: none;">
+                    </div>
+
+                    <div class="progress-bar" id="progress-bar">
+                        <div class="progress-fill" id="progress-fill"></div>
+                    </div>
+
+                    <div class="message" id="upload-message"></div>
+                </div>
+
+                <!-- My Files Tab -->
+                <div id="my-files-tab" class="tab-content hidden">
+                    <div class="loading" id="my-files-loading">Loading your files...</div>
+                    <div class="files-list" id="my-files-list"></div>
+                </div>
+
+                <!-- All Files Tab -->
+                <div id="all-files-tab" class="tab-content hidden">
+                    <div class="loading" id="all-files-loading">Loading all files...</div>
+                    <div class="files-list" id="all-files-list"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:3001';
+        let token = localStorage.getItem('rougee_token');
+        let currentUser = null;
+
+        // Initialize app
+        document.addEventListener('DOMContentLoaded', function() {
+            if (token) {
+                checkAuth();
+            }
+            setupEventListeners();
+        });
+
+        function setupEventListeners() {
+            // Auth forms
+            document.getElementById('login-form').addEventListener('submit', handleLogin);
+            document.getElementById('register-form').addEventListener('submit', handleRegister);
+
+            // File upload
+            const uploadArea = document.getElementById('upload-area');
+            const fileInput = document.getElementById('file-input');
+
+            uploadArea.addEventListener('click', () => fileInput.click());
+            uploadArea.addEventListener('dragover', handleDragOver);
+            uploadArea.addEventListener('dragleave', handleDragLeave);
+            uploadArea.addEventListener('drop', handleDrop);
+            fileInput.addEventListener('change', handleFileSelect);
+        }
+
+        function showAuthTab(tab) {
+            document.querySelectorAll('.auth-section').forEach(section => {
+                section.classList.remove('active');
+            });
+            document.querySelectorAll('.tab').forEach(tabEl => {
+                tabEl.classList.remove('active');
+            });
+
+            document.getElementById(`${tab}-section`).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        function showTab(tab) {
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.add('hidden');
+            });
+            document.querySelectorAll('.tab').forEach(tabEl => {
+                tabEl.classList.remove('active');
+            });
+
+            document.getElementById(`${tab}-tab`).classList.remove('hidden');
+            event.target.classList.add('active');
+
+            // Load data for specific tabs
+            if (tab === 'my-files') {
+                loadMyFiles();
+            } else if (tab === 'all-files') {
+                loadAllFiles();
+            }
+        }
+
+        async function handleLogin(e) {
+            e.preventDefault();
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+
+            try {
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email, password }),
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    token = data.token;
+                    currentUser = data.user;
+                    localStorage.setItem('rougee_token', token);
+                    showMainApp();
+                } else {
+                    showMessage('auth-message', data.error, 'error');
+                }
+            } catch (error) {
+                showMessage('auth-message', 'Login failed. Please try again.', 'error');
+            }
+        }
+
+        async function handleRegister(e) {
+            e.preventDefault();
+            const username = document.getElementById('register-username').value;
+            const email = document.getElementById('register-email').value;
+            const password = document.getElementById('register-password').value;
+
+            try {
+                const response = await fetch(`${API_BASE}/auth/register`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ username, email, password }),
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    token = data.token;
+                    currentUser = data.user;
+                    localStorage.setItem('rougee_token', token);
+                    showMainApp();
+                } else {
+                    showMessage('auth-message', data.error, 'error');
+                }
+            } catch (error) {
+                showMessage('auth-message', 'Registration failed. Please try again.', 'error');
+            }
+        }
+
+        async function checkAuth() {
+            try {
+                const response = await fetch(`${API_BASE}/auth/me`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                    },
+                });
+
+                if (response.ok) {
+                    currentUser = await response.json();
+                    showMainApp();
+                } else {
+                    localStorage.removeItem('rougee_token');
+                    token = null;
+                }
+            } catch (error) {
+                localStorage.removeItem('rougee_token');
+                token = null;
+            }
+        }
+
+        function showMainApp() {
+            document.getElementById('auth-card').classList.add('hidden');
+            document.getElementById('app-section').classList.remove('hidden');
+            document.getElementById('welcome-message').textContent = `Welcome, ${currentUser.username}!`;
+        }
+
+        function logout() {
+            token = null;
+            currentUser = null;
+            localStorage.removeItem('rougee_token');
+            document.getElementById('auth-card').classList.remove('hidden');
+            document.getElementById('app-section').classList.add('hidden');
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.currentTarget.classList.add('drag-over');
+        }
+
+        function handleDragLeave(e) {
+            e.preventDefault();
+            e.currentTarget.classList.remove('drag-over');
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            e.currentTarget.classList.remove('drag-over');
+            const files = Array.from(e.dataTransfer.files);
+            uploadFiles(files);
+        }
+
+        function handleFileSelect(e) {
+            const files = Array.from(e.target.files);
+            uploadFiles(files);
+        }
+
+        async function uploadFiles(files) {
+            if (files.length === 0) return;
+
+            const progressBar = document.getElementById('progress-bar');
+            const progressFill = document.getElementById('progress-fill');
+            
+            progressBar.style.display = 'block';
+            let uploadedCount = 0;
+
+            for (const file of files) {
+                await uploadSingleFile(file);
+                uploadedCount++;
+                const progress = (uploadedCount / files.length) * 100;
+                progressFill.style.width = `${progress}%`;
+            }
+
+            progressBar.style.display = 'none';
+            loadMyFiles(); // Refresh the files list
+        }
+
+        async function uploadSingleFile(file) {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await fetch(`${API_BASE}/upload/music`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                    },
+                    body: formData,
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showMessage('upload-message', `${file.name} uploaded successfully!`, 'success');
+                } else {
+                    showMessage('upload-message', `Failed to upload ${file.name}: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                showMessage('upload-message', `Failed to upload ${file.name}`, 'error');
+            }
+        }
+
+        async function loadMyFiles() {
+            const loading = document.getElementById('my-files-loading');
+            const list = document.getElementById('my-files-list');
+            
+            loading.style.display = 'block';
+            list.innerHTML = '';
+
+            try {
+                const response = await fetch(`${API_BASE}/music/my-files`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                    },
+                });
+
+                const data = await response.json();
+                loading.style.display = 'none';
+
+                if (response.ok) {
+                    renderFilesList(data.files, list, true);
+                } else {
+                    list.innerHTML = `<p>Failed to load files: ${data.error}</p>`;
+                }
+            } catch (error) {
+                loading.style.display = 'none';
+                list.innerHTML = '<p>Failed to load files</p>';
+            }
+        }
+
+        async function loadAllFiles() {
+            const loading = document.getElementById('all-files-loading');
+            const list = document.getElementById('all-files-list');
+            
+            loading.style.display = 'block';
+            list.innerHTML = '';
+
+            try {
+                const response = await fetch(`${API_BASE}/music/files`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                    },
+                });
+
+                const data = await response.json();
+                loading.style.display = 'none';
+
+                if (response.ok) {
+                    renderFilesList(data.files, list, false);
+                } else {
+                    list.innerHTML = `<p>Failed to load files: ${data.error}</p>`;
+                }
+            } catch (error) {
+                loading.style.display = 'none';
+                list.innerHTML = '<p>Failed to load files</p>';
+            }
+        }
+
+        function renderFilesList(files, container, showActions) {
+            if (files.length === 0) {
+                container.innerHTML = '<p>No files found</p>';
+                return;
+            }
+
+            files.forEach(file => {
+                const fileItem = document.createElement('div');
+                fileItem.className = 'file-item';
+
+                const sizeInMB = (file.size / (1024 * 1024)).toFixed(2);
+                const uploadDate = new Date(file.uploadedAt).toLocaleDateString();
+
+                fileItem.innerHTML = `
+                    <div class="file-info">
+                        <div class="file-icon">🎵</div>
+                        <div class="file-details">
+                            <h4>${file.originalName}</h4>
+                            <small>${sizeInMB} MB • ${uploadDate}${file.uploadedBy ? ` • by ${file.uploadedBy}` : ''}</small>
+                        </div>
+                    </div>
+                    <div class="file-actions">
+                        <button class="btn btn-small" onclick="streamFile('${file.id}')">Play</button>
+                    </div>
+                `;
+
+                container.appendChild(fileItem);
+            });
+        }
+
+        function streamFile(fileId) {
+            // Create audio element and play file using the stream endpoint
+            // Since we can't add auth headers to audio elements directly,
+            // we'll fetch the file and create an object URL
+            fetch(`${API_BASE}/music/stream/${fileId}`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                },
+            }).then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to load audio');
+                }
+                return response.blob();
+            }).then(blob => {
+                const url = URL.createObjectURL(blob);
+                const audio = new Audio(url);
+                audio.play().catch(error => {
+                    showMessage('upload-message', 'Failed to play audio file', 'error');
+                });
+                
+                // Clean up the object URL after the audio finishes or fails
+                audio.addEventListener('ended', () => URL.revokeObjectURL(url));
+                audio.addEventListener('error', () => URL.revokeObjectURL(url));
+            }).catch(error => {
+                showMessage('upload-message', 'Failed to play audio file', 'error');
+            });
+        }
+
+        function showMessage(elementId, text, type) {
+            const messageEl = document.getElementById(elementId);
+            messageEl.textContent = text;
+            messageEl.className = `message ${type}`;
+            messageEl.style.display = 'block';
+            
+            setTimeout(() => {
+                messageEl.style.display = 'none';
+            }, 5000);
+        }
+    </script>
+</body>
+</html>
