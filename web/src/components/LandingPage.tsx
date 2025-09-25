@@ -1,7 +1,7 @@
 'use client';
 
 import { ConnectButton } from '@rainbow-me/rainbowkit';
-import { Wallet, Music, Zap } from 'lucide-react';
+import Image from 'next/image';
 
 export function LandingPage() {
   return (
@@ -62,16 +62,18 @@ export function LandingPage() {
                             className="bg-black border border-green-400 text-green-400 px-4 py-2 font-mono text-sm retro-border"
                             type="button"
                           >
-                            {chain.hasIcon && (
-                              <div className="inline-block w-3 h-3 mr-2">
-                                {chain.iconUrl && (
-                                  <img
-                                    alt={chain.name ?? 'Chain icon'}
-                                    src={chain.iconUrl}
-                                    className="w-3 h-3"
-                                  />
-                                )}
-                              </div>
+                            {chain.hasIcon && chain.iconUrl && (
+                              <span className="inline-block w-3 h-3 mr-2">
+                                {/* Using next/image with unoptimized to avoid remote domain config for ephemeral chain icons */}
+                                <Image
+                                  alt={chain.name ?? 'Chain icon'}
+                                  src={chain.iconUrl}
+                                  width={12}
+                                  height={12}
+                                  unoptimized
+                                  className="w-3 h-3"
+                                />
+                              </span>
                             )}
                             {chain.name}
                           </button>

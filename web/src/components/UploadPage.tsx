@@ -3,7 +3,7 @@
 import { useState, useRef } from 'react';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { useAccount } from 'wagmi';
-import axios from 'axios';
+import axios, { AxiosProgressEvent } from 'axios';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -13,8 +13,8 @@ export function UploadPage() {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [logs, setLogs] = useState<string[]>([]);
-  const [myFiles, setMyFiles] = useState<any[]>([]);
-  const [allFiles, setAllFiles] = useState<any[]>([]);
+  // Future: will hold structured music file metadata returned from API
+  // Placeholder states removed until API integration returns file data
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const addLog = (message: string) => {
@@ -45,7 +45,7 @@ export function UploadPage() {
           headers: {
             'Content-Type': 'multipart/form-data',
           },
-          onUploadProgress: (progressEvent) => {
+          onUploadProgress: (progressEvent: AxiosProgressEvent) => {
             if (progressEvent.total) {
               const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
               setUploadProgress(progress);
@@ -56,7 +56,7 @@ export function UploadPage() {
         if (response.status === 201) {
           addLog(`SUCCESS: ${file.name} - UPLOAD COMPLETE`);
         }
-      } catch (error) {
+      } catch {
         addLog(`ERROR: ${file.name} - UPLOAD FAILED`);
       }
 
@@ -91,7 +91,7 @@ export function UploadPage() {
             </div>
           </div>
           <ConnectButton.Custom>
-            {({ account, openAccountModal }) => (
+            {({ openAccountModal }) => (
               <button
                 onClick={openAccountModal}
                 className="bg-black border border-green-400 text-green-400 px-4 py-2 text-xs font-mono retro-border"
@@ -113,9 +113,9 @@ export function UploadPage() {
               <button
                 key={key}
                 onClick={() => {
-                  setActiveTab(key as any);
-                  if (key === 'my-files') loadMyFiles();
-                  if (key === 'all-files') loadAllFiles();
+                  setActiveTab(key as typeof activeTab);
+                  if (key === 'my-files') loadMyFiles(); // no-op placeholder
+                  if (key === 'all-files') loadAllFiles(); // no-op placeholder
                 }}
                 className={`px-4 py-2 text-xs font-mono border transition-colors ${
                   activeTab === key
