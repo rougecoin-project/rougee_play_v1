@@ -11,8 +11,4 @@
 [[plugins]]
   package = "@netlify/plugin-nextjs"
 
-# Optional: redirect all to Next.js handler (plugin usually manages this)
-[[redirects]]
-  from = "/api/*"
-  to = "/.netlify/functions/next"
-  status = 200
+# The legacy root index.html has been removed; Next.js handles all routing.
