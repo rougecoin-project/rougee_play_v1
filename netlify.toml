@@ -1,0 +1,18 @@
+[build]
+  base = "web"
+  command = "npm run build"
+  publish = "web/.next"
+
+[build.environment]
+  NODE_VERSION = "18"
+  NEXT_PUBLIC_API_URL = "https://api.rougee.app"
+  NEXT_TELEMETRY_DISABLED = "1"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+# Optional: redirect all to Next.js handler (plugin usually manages this)
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/next"
+  status = 200
