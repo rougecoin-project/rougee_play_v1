@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import Image from 'next/image';
 import { FuturisticLoader } from './FuturisticLoader';
 
 interface AudioPlayerProps {
@@ -21,6 +22,12 @@ export function ModernAudioPlayer({ audioUrl, title, artist, ticker, description
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
+  const currentAudioElementRef = useRef<HTMLAudioElement | null>(null);
+  const mediaSourceRef = useRef<any>(null);
+  const audioContextRef = useRef<any>(null);
+  const [audioContext, setAudioContext] = useState(null);
+  const [analyser, setAnalyser] = useState<any>(null);
+  const [frequencyData, setFrequencyData] = useState(null);
 
   // Convert any IPFS URL to use primary gateway
   const getPrimaryGatewayUrl = (url: string) => {
@@ -32,25 +39,79 @@ export function ModernAudioPlayer({ audioUrl, title, artist, ticker, description
     return url;
   };
 
-  // Available backup gateways for fallback
+  // Available backup gateways for fallback (ordered by reliability)
   const backupGateways = [
     'https://ipfs.io/ipfs/',
-    'https://cloudflare-ipfs.com/ipfs/',
+    'https://gateway.ipfs.io/ipfs/',
+    'https://gateway.pinata.cloud/ipfs/',
     'https://dweb.link/ipfs/',
     'https://4everland.io/ipfs/',
-    'https://gateway.ipfs.io/ipfs/',
-    'https://gateway.pinata.cloud/ipfs/'
+    'https://cf-ipfs.com/ipfs/', // More reliable Cloudflare gateway
+    'https://w3s.link/ipfs/', // Web3.Storage gateway
+    'https://nftstorage.link/ipfs/' // NFT.Storage gateway
   ];
 
   const [currentUrl, setCurrentUrl] = useState(getPrimaryGatewayUrl(audioUrl));
   const [gatewayIndex, setGatewayIndex] = useState(0);
 
-  // Reset gateway index when audio URL changes
+  // Reset gateway index and cleanup audio analysis when audio URL changes
   useEffect(() => {
+    // Reset URL and error state
     setCurrentUrl(getPrimaryGatewayUrl(audioUrl));
     setGatewayIndex(0);
     setError(false);
-    // getPrimaryGatewayUrl is stable, audioUrl is the only dependency
+    
+    // Immediately cleanup existing audio context and media source for new track
+    const cleanupAudioResources = () => {
+      console.log('🔄 Cleaning up audio resources for new track');
+      
+      // Mark audio element as disconnected
+      if (currentAudioElementRef.current) {
+        (currentAudioElementRef.current as any).connectedToAudioContext = false;
+      }
+      
+      // Disconnect and cleanup media source first
+      if (mediaSourceRef.current) {
+        try {
+          mediaSourceRef.current.disconnect();
+          console.log('✅ Media source disconnected');
+        } catch (e) {
+          console.log('Media source already disconnected');
+        }
+        mediaSourceRef.current = null;
+        currentAudioElementRef.current = null;
+      }
+      
+      // Close existing audio context
+      if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+        try {
+          audioContextRef.current.close();
+          console.log('✅ Audio context closed');
+        } catch (e) {
+          console.log('Audio context already closed');
+        }
+      }
+      audioContextRef.current = null;
+    };
+    
+    // Cleanup immediately when URL changes
+    cleanupAudioResources();
+    
+    // Reset audio analysis state after cleanup
+    setAudioContext(null);
+    setAnalyser(null);
+    setFrequencyData(null);
+    
+    // Small delay to allow cleanup to complete before potential new setup
+    const timeoutId = setTimeout(() => {
+      console.log('🔄 Audio resources cleanup completed');
+    }, 50);
+    
+    // Cleanup function for component unmount or next URL change
+    return () => {
+      clearTimeout(timeoutId);
+      cleanupAudioResources();
+    };
   }, [audioUrl]);
 
   // Auto-play when track changes (if autoPlay is enabled)
@@ -76,231 +137,60 @@ export function ModernAudioPlayer({ audioUrl, title, artist, ticker, description
     }
     // autoPlay, audioRef, loading, error, title are all dependencies
   }, [audioUrl, autoPlay, title, loading, error]);
+  
+  // Audio analysis state - moved up to avoid reference errors
   const [waveformData, setWaveformData] = useState<number[]>([]);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
-  const [analyser, setAnalyser] = useState<AnalyserNode | null>(null);
-  // Always use plain Uint8Array for frequencyData
-  const [frequencyData, setFrequencyData] = useState<Uint8Array | null>(null);
   const animationRef = useRef<number | undefined>(undefined);
+  // Audio analysis and visualizer logic removed for stability
 
-  // Generate real waveform data from audio file
+  // Generate static waveform data only
   useEffect(() => {
-    const generateRealWaveform = async () => {
-      if (!audioUrl) return;
-
-      try {
-        console.log('Generating waveform for:', audioUrl);
-        setLoading(true);
-
-        // For waveform, skip the complex audio analysis for now
-        // Generate a realistic-looking waveform based on the audio element
-        console.log('Generating simplified waveform...');
-        
-        // Create a more realistic mock waveform that varies
-        const generateRealisticWaveform = () => {
-          const data: number[] = [];
-          for (let i = 0; i < 100; i++) {
-            // Create a more complex pattern with multiple frequency components
-            const lowFreq = Math.sin(i * 0.1) * 0.3;
-            const midFreq = Math.sin(i * 0.3) * 0.4;
-            const highFreq = Math.sin(i * 0.7) * 0.2;
-            const noise = (Math.random() - 0.5) * 0.1;
-            
-            // Combine frequencies and add some variation
-            let amplitude = Math.abs(lowFreq + midFreq + highFreq + noise);
-            
-            // Add some beat patterns
-            if (i % 16 < 4) amplitude *= 1.5; // Bass hits
-            if (i % 8 === 0) amplitude *= 1.3; // Snare hits
-            
-            // Normalize to 0-1
-            amplitude = Math.min(1, Math.max(0.1, amplitude));
-            data.push(amplitude);
-          }
-          return data;
-        };
-
-        const waveformData = generateRealisticWaveform();
-        setWaveformData(waveformData);
-        console.log('✅ Simplified waveform generated with', waveformData.length, 'data points');
-        
-      } catch (err) {
-        console.error('Failed to generate waveform:', err);
-        // Fallback to mock data if real analysis fails
-        const mockData: number[] = [];
-        for (let i = 0; i < 100; i++) {
-          const base = Math.sin(i * 0.1) * 0.5 + 0.5;
-          const variation = Math.random() * 0.4 + 0.3;
-          mockData.push(base * variation);
-        }
-        setWaveformData(mockData);
-        console.log('Using fallback mock waveform');
-      } finally {
-        setLoading(false);
+    const generateStaticWaveform = () => {
+      const data: number[] = [];
+      for (let i = 0; i < 100; i++) {
+        // Simple sine wave for visual interest
+        const value = Math.abs(Math.sin(i * 0.15) * 0.7 + 0.3 + (Math.random() - 0.5) * 0.1);
+        data.push(Math.min(1, Math.max(0.1, value)));
       }
+      setWaveformData(data);
     };
-
-    generateRealWaveform();
-    // audioUrl is the only dependency
+    generateStaticWaveform();
   }, [audioUrl]);
 
-  // Setup audio analysis when audio element is ready
-  useEffect(() => {
-    if (!audioRef.current) return;
-
-    const setupAudioAnalysis = () => {
-      try {
-        const audio = audioRef.current!;
-        const context = new (window.AudioContext || (window as any).webkitAudioContext)();
-        const analyserNode = context.createAnalyser();
-        const source = context.createMediaElementSource(audio);
-        
-        analyserNode.fftSize = 256;
-        analyserNode.smoothingTimeConstant = 0.8;
-        
-        source.connect(analyserNode);
-        analyserNode.connect(context.destination);
-        
-        const bufferLength = analyserNode.frequencyBinCount;
-  const dataArray: Uint8Array = new Uint8Array(bufferLength);
-        
-        setAudioContext(context);
-        setAnalyser(analyserNode);
-        setFrequencyData(dataArray);
-        
-        console.log('✅ Audio analysis setup complete');
-      } catch (err) {
-        console.error('Failed to setup audio analysis:', err);
-      }
-    };
-
-    // Setup when audio starts playing
-    const handlePlay = () => {
-      if (!audioContext) {
-        setupAudioAnalysis();
-      }
-      if (audioContext?.state === 'suspended') {
-        audioContext.resume();
-      }
-    };
-
-    audioRef.current.addEventListener('play', handlePlay);
-    
-    return () => {
-      if (audioRef.current) {
-        audioRef.current.removeEventListener('play', handlePlay);
-      }
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
-      }
-    };
-    // audioContext, animationRef are dependencies
-  }, [audioContext, animationRef]);
-
-  // Real-time dancing visualizer
+  // Draw static waveform only
   useEffect(() => {
     if (!canvasRef.current) return;
-
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-
-    let animationId: number;
-
-    const drawVisualizer = () => {
-      const { width, height } = canvas;
-      
-      // Clear canvas with dark background
-      ctx.fillStyle = '#111827';
-      ctx.fillRect(0, 0, width, height);
-
-      if (analyser && isPlaying) {
-        // Use a local Uint8Array to avoid TS DOM type issues
-        const bufferLength = analyser.frequencyBinCount;
-        const freqData = new Uint8Array(bufferLength);
-        analyser.getByteFrequencyData(freqData);
-
-        const barCount = 64; // Number of bars to display
-        const barWidth = width / barCount;
-
-        // Draw frequency bars that dance with the music
-        for (let i = 0; i < barCount; i++) {
-          const barHeight = (freqData[i] / 255) * height * 0.8;
-          const x = i * barWidth;
-          const y = height - barHeight;
-
-          // Create dynamic colors based on frequency intensity
-          const intensity = freqData[i] / 255;
-          let hue = 120; // Start with green
-
-          if (intensity > 0.7) hue = 280; // Purple for high intensity
-          else if (intensity > 0.4) hue = 200; // Blue for medium
-          else if (intensity > 0.2) hue = 160; // Teal for low-medium
-
-          const saturation = 70 + (intensity * 30); // More saturated when louder
-          const lightness = 40 + (intensity * 40); // Brighter when louder
-
-          ctx.fillStyle = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
-
-          // Draw bars with glow effect
-          ctx.shadowColor = ctx.fillStyle;
-          ctx.shadowBlur = intensity * 10;
-          ctx.fillRect(x, y, barWidth - 2, barHeight);
-          ctx.shadowBlur = 0;
-
-          // Add extra glow for high frequencies
-          if (intensity > 0.6) {
-            ctx.fillStyle = `hsl(${hue}, 100%, 80%)`;
-            ctx.fillRect(x + 1, y + barHeight * 0.8, barWidth - 4, barHeight * 0.2);
-          }
-        }
-
-        // Bass pulse removed - clean bar-only visualizer
-
-      } else {
-        // Static waveform when not playing
-        const progress = duration > 0 ? currentTime / duration : 0;
-        const barCount = 100;
-        const barWidth = width / barCount;
-        
-        waveformData.forEach((amplitude, index) => {
-          const barHeight = Math.max(2, amplitude * height * 0.6);
-          const x = index * barWidth;
-          const y = (height - barHeight) / 2;
-          
-          const isPlayed = index < progress * barCount;
-          ctx.fillStyle = isPlayed ? '#10b981' : '#374151';
-          ctx.fillRect(x, y, barWidth - 1, barHeight);
-        });
-        
-        // Progress line
-        if (progress > 0) {
-          const progressX = progress * width;
-          ctx.strokeStyle = '#10b981';
-          ctx.lineWidth = 2;
-          ctx.setLineDash([4, 4]);
-          ctx.beginPath();
-          ctx.moveTo(progressX, 0);
-          ctx.lineTo(progressX, height);
-          ctx.stroke();
-          ctx.setLineDash([]);
-        }
-      }
-      
-      // Continue animation
-      animationId = requestAnimationFrame(drawVisualizer);
-    };
-
-    // Start the animation loop
-    drawVisualizer();
-
-    return () => {
-      if (animationId) {
-        cancelAnimationFrame(animationId);
-      }
-    };
-  }, [analyser, frequencyData, isPlaying, currentTime, duration, waveformData, animationRef]);
+    const { width, height } = canvas;
+    ctx.fillStyle = '#111827';
+    ctx.fillRect(0, 0, width, height);
+    const progress = duration > 0 ? currentTime / duration : 0;
+    const barCount = 100;
+    const barWidth = width / barCount;
+    waveformData.forEach((amplitude, index) => {
+      const barHeight = Math.max(2, amplitude * height * 0.6);
+      const x = index * barWidth;
+      const y = (height - barHeight) / 2;
+      const isPlayed = index < progress * barCount;
+      ctx.fillStyle = isPlayed ? '#10b981' : '#374151';
+      ctx.fillRect(x, y, barWidth - 1, barHeight);
+    });
+    // Progress line
+    if (progress > 0) {
+      const progressX = progress * width;
+      ctx.strokeStyle = '#10b981';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.moveTo(progressX, 0);
+      ctx.lineTo(progressX, height);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+  }, [currentTime, duration, waveformData]);
 
   const togglePlayPause = async () => {
     if (!audioRef.current) return;
@@ -356,16 +246,24 @@ export function ModernAudioPlayer({ audioUrl, title, artist, ticker, description
         const testUrl = `${gateway}${hash}`;
         console.log(`Testing gateway ${i + 1}/${backupGateways.length}: ${gateway}`);
         
+        // Create timeout controller for faster fallback
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
+        
         // Test if the gateway responds
         const response = await fetch(testUrl, { 
           method: 'HEAD',
           mode: 'cors',
-          cache: 'no-store'
+          cache: 'no-store',
+          signal: controller.signal
         });
+        
+        clearTimeout(timeoutId);
         
         if (response.ok) {
           console.log(`✅ Gateway working: ${gateway}`);
           setCurrentUrl(`${testUrl}?t=${Date.now()}`);
+          setLoading(false);
           return;
         }
       } catch (error) {
@@ -427,10 +325,11 @@ export function ModernAudioPlayer({ audioUrl, title, artist, ticker, description
               <div className="w-24 h-24 md:w-28 md:h-28 rounded-xl overflow-hidden border-2 border-green-400/50 shadow-lg shadow-green-400/20 relative group/cover">
                 {coverUrl ? (
                   <>
-                    <img 
+                    <Image 
                       src={getPrimaryGatewayUrl(coverUrl)}
                       alt={`${title} cover`}
-                      className="w-full h-full object-cover"
+                      fill
+                      className="object-cover"
                       onError={(e) => {
                         (e.target as HTMLImageElement).style.display = 'none';
                         (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
@@ -600,7 +499,7 @@ export function ModernAudioPlayer({ audioUrl, title, artist, ticker, description
           onError={() => {
             console.error('Error loading audio from:', currentUrl);
             
-            // Try next gateway automatically
+            // Try next gateway automatically with faster switching
             const hash = audioUrl.match(/\/ipfs\/([^\/\?]+)/)?.[1];
             if (hash && gatewayIndex < backupGateways.length - 1) {
               const nextIndex = gatewayIndex + 1;
@@ -609,12 +508,14 @@ export function ModernAudioPlayer({ audioUrl, title, artist, ticker, description
               
               setGatewayIndex(nextIndex);
               setCurrentUrl(`${nextGateway}${hash}?t=${Date.now()}`);
+              setError(false); // Reset error state for next attempt
             } else {
-              // All gateways failed
+              // All gateways failed - show error
               setLoading(false);
               setError(true);
               setIsPlaying(false);
-              console.error('All gateways failed for audio:', audioUrl);
+              console.error('❌ All gateways failed for audio:', audioUrl);
+              console.log('💡 Try using the RETRY STREAM button to test gateways manually');
             }
           }}
           onLoadStart={() => setLoading(true)}

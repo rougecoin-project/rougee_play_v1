@@ -129,7 +129,7 @@ class QuickNodeService {
           try {
             const errorText = await response.text();
             console.error('Response body:', errorText);
-          } catch (e) {
+          } catch (error) {
             console.error('Could not read response body');
           }
           return false;

@@ -5,7 +5,7 @@ import { useAccount, useBalance, useChainId, useDisconnect, useReadContract } fr
 import { formatUnits } from 'viem';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import Link from 'next/link';
-import { CopyIcon, ExternalLinkIcon, LogOutIcon, HomeIcon, MusicIcon, PlayIcon, DownloadIcon, ShareIcon, SearchIcon, FilterIcon, FileDownIcon } from 'lucide-react';
+import { CopyIcon, ExternalLinkIcon, LogOutIcon, HomeIcon, MusicIcon, PlayIcon, DownloadIcon, ShareIcon, SearchIcon, FileDownIcon } from 'lucide-react';
 import { quickNodeService } from '@/lib/quicknode';
 
 export function WalletPage() {
@@ -153,11 +153,11 @@ export function WalletPage() {
   });
   
   const [copied, setCopied] = useState(false);
-  const [transactions, setTransactions] = useState<any[]>([]);
+  const [transactions, setTransactions] = useState<unknown[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [musicAssets, setMusicAssets] = useState<any[]>([]);
+  const [musicAssets, setMusicAssets] = useState<unknown[]>([]);
   const [isLoadingAssets, setIsLoadingAssets] = useState(false);
-  const [selectedAsset, setSelectedAsset] = useState<any>(null);
+  const [selectedAsset, setSelectedAsset] = useState<unknown>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('newest');
@@ -201,16 +201,16 @@ export function WalletPage() {
           if (response.ok) {
             const data = await response.json();
             if (data.status === '1' && data.result) {
-              const formattedTxs = data.result.slice(0, 10).map((tx: any) => ({
-                hash: tx.hash,
-                type: tx.to.toLowerCase() === address.toLowerCase() ? 'Received' : 'Sent',
-                value: `${(parseInt(tx.value) / Math.pow(10, 18)).toFixed(6)} ETH`,
-                timestamp: new Date(parseInt(tx.timeStamp) * 1000).toLocaleString(),
-                status: parseInt(tx.isError) === 0 ? 'Completed' : 'Failed',
-                from: tx.from,
-                to: tx.to,
-                gasUsed: tx.gasUsed,
-                gasPrice: tx.gasPrice
+              const formattedTxs = data.result.slice(0, 10).map((tx: Record<string, unknown>) => ({
+                hash: tx.hash as string,
+                type: (tx.to as string)?.toLowerCase() === address.toLowerCase() ? 'Received' : 'Sent',
+                value: `${(parseInt(tx.value as string) / Math.pow(10, 18)).toFixed(6)} ETH`,
+                timestamp: new Date(parseInt(tx.timeStamp as string) * 1000).toLocaleString(),
+                status: parseInt(tx.isError as string) === 0 ? 'Completed' : 'Failed',
+                from: tx.from as string,
+                to: tx.to as string,
+                gasUsed: tx.gasUsed as string,
+                gasPrice: tx.gasPrice as string
               }));
               setTransactions(formattedTxs);
             } else {
@@ -329,32 +329,34 @@ export function WalletPage() {
     return date.toLocaleDateString();
   };
 
-  const handlePlayAsset = (asset: any) => {
+  const handlePlayAsset = (asset: unknown) => {
     setSelectedAsset(asset);
     setIsPlaying(true);
   };
 
-  const handleDownloadAsset = (asset: any) => {
-    if (asset.audioUrl) {
+  const handleDownloadAsset = (asset: unknown) => {
+    const assetData = asset as { audioUrl?: string; fileName?: string; title?: string };
+    if (assetData.audioUrl) {
       const link = document.createElement('a');
-      link.href = asset.audioUrl;
-      link.download = asset.fileName || `${asset.title}.mp3`;
+      link.href = assetData.audioUrl;
+      link.download = assetData.fileName || `${assetData.title || 'download'}.mp3`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
     }
   };
 
-  const handleShareAsset = (asset: any) => {
-    if (navigator.share) {
+  const handleShareAsset = (asset: unknown) => {
+    const assetData = asset as { title?: string; artist?: string; audioUrl?: string };
+    if (navigator.share && assetData.audioUrl) {
       navigator.share({
-        title: asset.title,
-        text: `Check out this music: ${asset.title} by ${asset.artist}`,
-        url: asset.audioUrl
+        title: assetData.title || 'Music Track',
+        text: `Check out this music: ${assetData.title || 'Unknown'} by ${assetData.artist || 'Unknown'}`,
+        url: assetData.audioUrl
       });
-    } else {
+    } else if (assetData.audioUrl) {
       // Fallback to copying URL
-      navigator.clipboard.writeText(asset.audioUrl);
+      navigator.clipboard.writeText(assetData.audioUrl);
       alert('Asset URL copied to clipboard!');
     }
   };
@@ -362,27 +364,31 @@ export function WalletPage() {
   // Filter and sort music assets
   const filteredAndSortedAssets = musicAssets
     .filter(asset => {
+      const assetData = asset as { title?: string; artist?: string; ticker?: string; uploadedAt?: string; fileSize?: number };
       const matchesSearch = searchQuery === '' || 
-        asset.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        asset.artist.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        asset.ticker.toLowerCase().includes(searchQuery.toLowerCase());
+        assetData.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        assetData.artist?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        assetData.ticker?.toLowerCase().includes(searchQuery.toLowerCase());
       
       const matchesFilter = filterBy === 'all' || 
-        (filterBy === 'recent' && new Date(asset.uploadedAt) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)) ||
-        (filterBy === 'large' && asset.fileSize > 5 * 1024 * 1024); // 5MB+
+        (filterBy === 'recent' && assetData.uploadedAt && new Date(assetData.uploadedAt) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)) ||
+        (filterBy === 'large' && assetData.fileSize && assetData.fileSize > 5 * 1024 * 1024); // 5MB+
       
       return matchesSearch && matchesFilter;
     })
     .sort((a, b) => {
+      const aData = a as { title?: string; uploadedAt?: string; fileSize?: number };
+      const bData = b as { title?: string; uploadedAt?: string; fileSize?: number };
+      
       switch (sortBy) {
         case 'newest':
-          return new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime();
+          return new Date(bData.uploadedAt || 0).getTime() - new Date(aData.uploadedAt || 0).getTime();
         case 'oldest':
-          return new Date(a.uploadedAt).getTime() - new Date(b.uploadedAt).getTime();
+          return new Date(aData.uploadedAt || 0).getTime() - new Date(bData.uploadedAt || 0).getTime();
         case 'name':
-          return a.title.localeCompare(b.title);
+          return (aData.title || '').localeCompare(bData.title || '');
         case 'size':
-          return (b.fileSize || 0) - (a.fileSize || 0);
+          return (bData.fileSize || 0) - (aData.fileSize || 0);
         default:
           return 0;
       }
@@ -397,17 +403,20 @@ export function WalletPage() {
 
     const csvContent = [
       ['Hash', 'Type', 'Value', 'Timestamp', 'Status', 'From', 'To', 'Gas Used', 'Gas Price'].join(','),
-      ...transactions.map(tx => [
-        tx.hash,
-        tx.type,
-        tx.value,
-        tx.timestamp,
-        tx.status,
-        tx.from || '',
-        tx.to || '',
-        tx.gasUsed || '',
-        tx.gasPrice || ''
-      ].map(field => `"${field}"`).join(','))
+      ...transactions.map(tx => {
+        const txData = tx as { hash?: string; type?: string; value?: string; timestamp?: string; status?: string; from?: string; to?: string; gasUsed?: string; gasPrice?: string };
+        return [
+          txData.hash || '',
+          txData.type || '',
+          txData.value || '',
+          txData.timestamp || '',
+          txData.status || '',
+          txData.from || '',
+          txData.to || '',
+          txData.gasUsed || '',
+          txData.gasPrice || ''
+        ].map(field => `"${field}"`).join(',');
+      })
     ].join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv' });
@@ -575,23 +584,26 @@ export function WalletPage() {
                 </div>
               ) : transactions.length > 0 ? (
                 <div className="divide-y divide-gray-800">
-                  {transactions.map((tx, index) => (
-                    <div key={index} className="py-3">
-                      <div className="flex justify-between items-center mb-1">
-                        <div className="text-sm">{tx.type}</div>
-                        <div className="text-xs text-gray-500">{tx.timestamp}</div>
+                  {transactions.map((tx, index) => {
+                    const txData = tx as { type?: string; timestamp?: string; hash?: string; value?: string; status?: string };
+                    return (
+                      <div key={index} className="py-3">
+                        <div className="flex justify-between items-center mb-1">
+                          <div className="text-sm">{txData.type || 'Unknown'}</div>
+                          <div className="text-xs text-gray-500">{txData.timestamp || 'Unknown'}</div>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <div className="text-xs text-gray-400">{txData.hash || 'Unknown'}</div>
+                          <div className="text-sm text-green-400">{txData.value || 'Unknown'}</div>
+                        </div>
+                        <div className="text-xs text-right mt-1">
+                          <span className="bg-green-900 text-green-400 px-2 py-0.5 rounded-full">
+                            {txData.status || 'Unknown'}
+                          </span>
+                        </div>
                       </div>
-                      <div className="flex justify-between items-center">
-                        <div className="text-xs text-gray-400">{tx.hash}</div>
-                        <div className="text-sm text-green-400">{tx.value}</div>
-                      </div>
-                      <div className="text-xs text-right mt-1">
-                        <span className="bg-green-900 text-green-400 px-2 py-0.5 rounded-full">
-                          {tx.status}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="text-center py-8 text-gray-500">
@@ -657,56 +669,59 @@ export function WalletPage() {
             </div>
           ) : filteredAndSortedAssets.length > 0 ? (
             <div className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {filteredAndSortedAssets.map((asset, index) => (
-                <div key={index} className="border border-gray-800 p-4 hover:border-green-400 transition-colors duration-200 group">
-                  <div className="aspect-square bg-gray-900 mb-3 flex items-center justify-center relative overflow-hidden">
-                    <MusicIcon size={32} className="text-gray-400" />
-                    <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
-                      <button
-                        onClick={() => handlePlayAsset(asset)}
-                        className="bg-green-400 text-black p-2 rounded-full hover:bg-green-300 transition-colors"
-                        title="Play"
-                      >
-                        <PlayIcon size={16} />
-                      </button>
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <div className="text-sm font-bold truncate" title={asset.title}>
-                      {asset.title}
-                    </div>
-                    <div className="text-xs text-gray-400 truncate" title={asset.artist}>
-                      by {asset.artist}
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      {formatDate(asset.uploadedAt)} • {formatFileSize(asset.fileSize)}
-                    </div>
-                    
-                    <div className="flex justify-between items-center">
-                      <span className="bg-gray-900 text-gray-400 px-2 py-0.5 rounded-full text-xs">
-                        {asset.ticker}
-                      </span>
-                      <div className="flex space-x-1">
+              {filteredAndSortedAssets.map((asset, index) => {
+                const assetData = asset as { title?: string; artist?: string; ticker?: string; uploadedAt?: string; fileSize?: number };
+                return (
+                  <div key={index} className="border border-gray-800 p-4 hover:border-green-400 transition-colors duration-200 group">
+                    <div className="aspect-square bg-gray-900 mb-3 flex items-center justify-center relative overflow-hidden">
+                      <MusicIcon size={32} className="text-gray-400" />
+                      <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
                         <button
-                          onClick={() => handleDownloadAsset(asset)}
-                          className="text-gray-400 hover:text-green-400 transition-colors"
-                          title="Download"
+                          onClick={() => handlePlayAsset(asset)}
+                          className="bg-green-400 text-black p-2 rounded-full hover:bg-green-300 transition-colors"
+                          title="Play"
                         >
-                          <DownloadIcon size={14} />
-                        </button>
-                        <button
-                          onClick={() => handleShareAsset(asset)}
-                          className="text-gray-400 hover:text-green-400 transition-colors"
-                          title="Share"
-                        >
-                          <ShareIcon size={14} />
+                          <PlayIcon size={16} />
                         </button>
                       </div>
                     </div>
+                    
+                    <div className="space-y-2">
+                      <div className="text-sm font-bold truncate" title={assetData.title}>
+                        {assetData.title || 'Unknown Title'}
+                      </div>
+                      <div className="text-xs text-gray-400 truncate" title={assetData.artist}>
+                        by {assetData.artist || 'Unknown Artist'}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {formatDate(assetData.uploadedAt || '')} • {formatFileSize(assetData.fileSize || 0)}
+                      </div>
+                      
+                      <div className="flex justify-between items-center">
+                        <span className="bg-gray-900 text-gray-400 px-2 py-0.5 rounded-full text-xs">
+                          {assetData.ticker || 'N/A'}
+                        </span>
+                        <div className="flex space-x-1">
+                          <button
+                            onClick={() => handleDownloadAsset(asset)}
+                            className="text-gray-400 hover:text-green-400 transition-colors"
+                            title="Download"
+                          >
+                            <DownloadIcon size={14} />
+                          </button>
+                          <button
+                            onClick={() => handleShareAsset(asset)}
+                            className="text-gray-400 hover:text-green-400 transition-colors"
+                            title="Share"
+                          >
+                            <ShareIcon size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <div className="text-center py-8 text-gray-500">
@@ -736,7 +751,10 @@ export function WalletPage() {
               <div className="flex justify-between">
                 <span className="text-gray-500">Total Size:</span>
                 <span className="text-green-400">
-                  {formatFileSize(musicAssets.reduce((total, asset) => total + (asset.fileSize || 0), 0))}
+                  {formatFileSize(musicAssets.reduce((total, asset) => {
+                    const assetData = asset as { fileSize?: number };
+                    return total + (assetData.fileSize || 0);
+                  }, 0))}
                 </span>
               </div>
               <div className="flex justify-between">
@@ -791,12 +809,15 @@ export function WalletPage() {
           <div className="border border-gray-800 bg-black p-6">
             <h3 className="text-lg font-bold mb-4">RECENT ACTIVITY</h3>
             <div className="space-y-2">
-              {transactions.slice(0, 3).map((tx, index) => (
-                <div key={index} className="text-xs">
-                  <div className="text-gray-400">{tx.type}</div>
-                  <div className="text-gray-500">{tx.timestamp}</div>
-                </div>
-              ))}
+              {transactions.slice(0, 3).map((tx, index) => {
+                const txData = tx as { type?: string; timestamp?: string };
+                return (
+                  <div key={index} className="text-xs">
+                    <div className="text-gray-400">{txData.type || 'Unknown'}</div>
+                    <div className="text-gray-500">{txData.timestamp || 'Unknown'}</div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>

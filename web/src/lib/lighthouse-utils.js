@@ -81,7 +81,7 @@ export async function isUrlAccessible(url, timeout = 5000) {
     
     clearTimeout(timeoutId);
     return response.ok;
-  } catch (e) {
+  } catch (error) {
     return false;
   }
 }

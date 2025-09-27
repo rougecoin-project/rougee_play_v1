@@ -53,10 +53,10 @@ class PaymentService {
               params: [{ chainId: `0x${PAYMENT_CONFIG.chainId.toString(16)}` }],
             });
             console.log('✅ Switched to Base network');
-          } catch (switchError: any) {
+          } catch (switchError: unknown) {
             console.log('Adding Base network to wallet...');
             // If Base network not added to wallet, add it
-            if (switchError.code === 4902) {
+            if ((switchError as { code?: number }).code === 4902) {
               await window.ethereum.request({
                 method: 'wallet_addEthereumChain',
                 params: [{
@@ -162,20 +162,21 @@ class PaymentService {
             amountPaid: PAYMENT_CONFIG.launchFee
           };
           
-        } catch (txError: any) {
+        } catch (txError: unknown) {
           console.error('Transaction failed:', txError);
           
           // Handle specific error cases
-          if (txError.code === 4001) {
+          const errorWithCode = txError as { code?: number; message?: string };
+          if (errorWithCode.code === 4001) {
             throw new Error('Transaction rejected by user');
-          } else if (txError.code === -32603) {
+          } else if (errorWithCode.code === -32603) {
             throw new Error('Transaction failed to broadcast - check network connection');
-          } else if (txError.message?.includes('insufficient funds')) {
+          } else if (errorWithCode.message?.includes('insufficient funds')) {
             throw new Error('Insufficient ETH balance for transaction');
-          } else if (txError.message?.includes('gas')) {
+          } else if (errorWithCode.message?.includes('gas')) {
             throw new Error('Gas estimation failed - try increasing gas limit');
           } else {
-            throw new Error(`Transaction failed: ${txError.message || 'Unknown error'}`);
+            throw new Error(`Transaction failed: ${errorWithCode.message || 'Unknown error'}`);
           }
         }
         

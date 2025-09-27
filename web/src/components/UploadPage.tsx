@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { useAccount } from 'wagmi';
+import Image from 'next/image';
 import { quickNodeService, MusicMetadata } from '@/lib/quicknode';
 import { acrCloudService } from '@/lib/acrcloud';
 import { paymentService, PaymentResult } from '@/lib/payment';
@@ -10,6 +11,18 @@ import { ModernAudioPlayer } from './ModernAudioPlayer';
 import { WinampTrackList } from './WinampTrackList';
 import { FuturisticLoader } from './FuturisticLoader';
 import Link from 'next/link';
+
+interface Track {
+  title: string;
+  artist: string;
+  ticker?: string;
+  description?: string;
+  audioUrl: string;
+  coverUrl?: string;
+  duration?: number;
+  uploadedAt?: string;
+  fileSize?: number;
+}
 
 // Verified wallet addresses that can upload for FREE
 const VERIFIED_WALLETS = [
@@ -27,7 +40,7 @@ export function UploadPage() {
   
   // Check if current wallet is verified for FREE uploads
   const isVerifiedWallet = address && VERIFIED_WALLETS.includes(address.toLowerCase());
-  const [uploadTier, setUploadTier] = useState<'launch' | 'verified'>('launch');
+  // Removed unused uploadTier state
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [selectedCover, setSelectedCover] = useState<File | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
@@ -43,18 +56,18 @@ export function UploadPage() {
     coverHash?: string;
     coverUrl?: string;
   } | null>(null);
-  const [userFiles, setUserFiles] = useState<any[]>([]);
-  const [networkFiles, setNetworkFiles] = useState<any[]>([]);
+  const [userFiles, setUserFiles] = useState<Track[]>([]);
+  const [networkFiles, setNetworkFiles] = useState<Track[]>([]);
   const [isLoadingNetwork, setIsLoadingNetwork] = useState(false);
-  const [selectedNetworkTrack, setSelectedNetworkTrack] = useState<any | null>(null);
+  const [selectedNetworkTrack, setSelectedNetworkTrack] = useState<Track | null>(null);
   const [selectedNetworkIndex, setSelectedNetworkIndex] = useState<number | null>(null);
-  const [selectedUserTrack, setSelectedUserTrack] = useState<any | null>(null);
+  const [selectedUserTrack, setSelectedUserTrack] = useState<Track | null>(null);
   const [selectedUserIndex, setSelectedUserIndex] = useState<number | null>(null);
   const [isLoadingUserFiles, setIsLoadingUserFiles] = useState(false);
   
   // Launch Song state
   const [checkingCopyright, setCheckingCopyright] = useState(false);
-  const [copyrightCheckPassed, setCopyrightCheckPassed] = useState(false);
+  // Removed unused copyrightCheckPassed state
   const [paymentProcessing, setPaymentProcessing] = useState(false);
   const [showCopyrightViolationDialog, setShowCopyrightViolationDialog] = useState(false);
   const [violationDetails, setViolationDetails] = useState<{
@@ -239,7 +252,6 @@ export function UploadPage() {
     }
 
     setSelectedFile(file);
-    setCopyrightCheckPassed(false);
     addLog(`FILE SELECTED: ${file.name}`);
     
     // If this is for Launch Song (fee-based), check copyright immediately
@@ -248,7 +260,6 @@ export function UploadPage() {
       const copyrightPassed = await checkCopyright(file);
       
       if (copyrightPassed) {
-        setCopyrightCheckPassed(true);
         setShowMetadataForm(true);
         addLog('COPYRIGHT VERIFIED - PROCEED WITH METADATA');
       } else {
@@ -433,7 +444,6 @@ export function UploadPage() {
     setCoverPreview(null);
     setShowMetadataForm(false);
     setUploadResult(null);
-    setCopyrightCheckPassed(false);
     setMetadata({
       title: '',
       artist: '',
@@ -457,7 +467,7 @@ export function UploadPage() {
     try {
       const files = await quickNodeService.getUserFiles(address);
       addLog(`FOUND ${files.length} FILES`);
-      setUserFiles(files);
+      setUserFiles(files as Track[]);
     } catch (error) {
       addLog('ERROR: FAILED TO LOAD FILES');
       console.error('File loading error:', error);
@@ -471,7 +481,7 @@ export function UploadPage() {
     try {
       const files = await quickNodeService.getAllNetworkFiles();
       addLog(`FOUND ${files.length} NETWORK FILES`);
-      setNetworkFiles(files);
+      setNetworkFiles(files as Track[]);
     } catch (error) {
       addLog('ERROR: FAILED TO LOAD NETWORK FILES');
       console.error('Network files loading error:', error);
@@ -480,14 +490,14 @@ export function UploadPage() {
     setIsLoadingNetwork(false);
   };
 
-  const handleNetworkTrackSelect = (track: any, index: number) => {
+  const handleNetworkTrackSelect = (track: Track, index: number) => {
     setSelectedNetworkTrack(track);
     setSelectedNetworkIndex(index);
     addLog(`TRACK SELECTED: ${track.title} by ${track.artist}`);
     addLog(`AUTO-PLAYING...`);
   };
 
-  const handleUserTrackSelect = (track: any, index: number) => {
+  const handleUserTrackSelect = (track: Track, index: number) => {
     setSelectedUserTrack(track);
     setSelectedUserIndex(index);
     addLog(`MY TRACK SELECTED: ${track.title} by ${track.artist}`);
@@ -662,10 +672,11 @@ export function UploadPage() {
                         onClick={() => coverInputRef.current?.click()}
                       >
                         {coverPreview ? (
-                          <img 
+                          <Image 
                             src={coverPreview} 
                             alt="Cover preview" 
-                            className="w-full h-full object-cover rounded-lg"
+                            fill
+                            className="object-cover rounded-lg"
                           />
                         ) : (
                           <div className="text-center">
@@ -946,10 +957,11 @@ export function UploadPage() {
                           onClick={() => coverInputRef.current?.click()}
                         >
                           {coverPreview ? (
-                            <img 
+                            <Image 
                               src={coverPreview} 
                               alt="Cover preview" 
-                              className="w-full h-full object-cover rounded-lg"
+                              fill
+                              className="object-cover rounded-lg"
                             />
                           ) : (
                             <div className="text-center">
@@ -1193,7 +1205,7 @@ export function UploadPage() {
                  ticker={selectedUserTrack.ticker}
                  description={selectedUserTrack.description}
                  coverUrl={selectedUserTrack.coverUrl}
-                 uploaderAddress={selectedUserTrack.uploadedBy}
+                 uploaderAddress={(selectedUserTrack as any).uploadedBy || ''}
                  autoPlay={true}
                />
                 </div>
@@ -1233,7 +1245,7 @@ export function UploadPage() {
                  ticker={selectedNetworkTrack.ticker}
                  description={selectedNetworkTrack.description}
                  coverUrl={selectedNetworkTrack.coverUrl}
-                 uploaderAddress={selectedNetworkTrack.uploadedBy}
+                 uploaderAddress={(selectedNetworkTrack as any).uploadedBy || ''}
                  autoPlay={true}
                />
                 </div>
@@ -1412,7 +1424,7 @@ export function UploadPage() {
                   <div className="text-red-400 text-sm font-mono mb-2">
                     🎵 DETECTED COPYRIGHTED CONTENT:
                   </div>
-                  <div className="text-white font-bold">\"{violationDetails?.title}\"</div>
+                  <div className="text-white font-bold">&quot;{violationDetails?.title}&quot;</div>
                   <div className="text-gray-300">by {violationDetails?.artist}</div>
                   <div className="text-red-400 text-sm mt-2">
                     Confidence: {violationDetails?.confidence}%
