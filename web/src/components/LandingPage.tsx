@@ -2,6 +2,7 @@
 
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import Image from 'next/image';
+import Link from 'next/link';
 
 export function LandingPage() {
   return (
@@ -57,6 +58,12 @@ export function LandingPage() {
 
                       return (
                         <div className="flex gap-3">
+                          <Link 
+                            href="/wallet" 
+                            className="bg-black border border-green-400 text-green-400 px-4 py-2 font-mono text-sm hover:bg-green-400 hover:text-black transition-colors duration-200"
+                          >
+                            WALLET
+                          </Link>
                           <button
                             onClick={openChainModal}
                             className="bg-black border border-green-400 text-green-400 px-4 py-2 font-mono text-sm retro-border"

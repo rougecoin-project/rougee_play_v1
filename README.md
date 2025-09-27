@@ -32,6 +32,8 @@ A decentralized music platform built with Next.js 15, Web3 wallet integration, a
 - **Multiple Wallets** (MetaMask, Base Wallet, WalletConnect)
 - **Chain Switching** capabilities
 - **Account Management**
+- **Lighthouse Storage SDK** for decentralized IPFS storage
+- **Wallet Authentication** for secure file ownership
 
 ## 📁 Project Structure
 
@@ -113,6 +115,7 @@ CORS_ORIGIN=http://localhost:3000
 ```env
 NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=your-walletconnect-project-id
 NEXT_PUBLIC_API_URL=http://localhost:3001
+NEXT_PUBLIC_LIGHTHOUSE_API_KEY=your-lighthouse-api-key
 ```
 
 ## 🎨 Design System
@@ -182,7 +185,7 @@ MIT License - see LICENSE file for details
 
 ## 🔮 Roadmap
 
-- [ ] IPFS integration for decentralized storage
+- [x] IPFS integration for decentralized storage via Lighthouse
 - [ ] Music NFT minting
 - [ ] Token-gated access
 - [ ] Artist royalty smart contracts

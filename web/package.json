@@ -6,10 +6,10 @@
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test-quicknode": "node test-quicknode.js"
   },
   "dependencies": {
-    "@lighthouse-web3/sdk": "^0.4.2",
     "@rainbow-me/rainbowkit": "^2.2.8",
     "@tanstack/react-query": "^5.90.2",
     "axios": "^1.12.2",
