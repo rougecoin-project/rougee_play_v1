@@ -50,6 +50,7 @@ export function ModernAudioPlayer({ audioUrl, title, artist, ticker, description
     setCurrentUrl(getPrimaryGatewayUrl(audioUrl));
     setGatewayIndex(0);
     setError(false);
+    // getPrimaryGatewayUrl is stable, audioUrl is the only dependency
   }, [audioUrl]);
 
   // Auto-play when track changes (if autoPlay is enabled)
@@ -62,8 +63,8 @@ export function ModernAudioPlayer({ audioUrl, title, artist, ticker, description
           await audioRef.current!.play();
           setIsPlaying(true);
           setLoading(false);
-        } catch (error) {
-          console.error('Auto-play failed:', error);
+        } catch (err) {
+          console.error('Auto-play failed:', err);
           setLoading(false);
           setError(false); // Don't show error for auto-play failures
         }
@@ -73,13 +74,15 @@ export function ModernAudioPlayer({ audioUrl, title, artist, ticker, description
       const timer = setTimeout(attemptAutoPlay, 100);
       return () => clearTimeout(timer);
     }
-  }, [audioUrl, autoPlay, title]);
+    // autoPlay, audioRef, loading, error, title are all dependencies
+  }, [audioUrl, autoPlay, title, loading, error]);
   const [waveformData, setWaveformData] = useState<number[]>([]);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
   const [analyser, setAnalyser] = useState<AnalyserNode | null>(null);
+  // Always use plain Uint8Array for frequencyData
   const [frequencyData, setFrequencyData] = useState<Uint8Array | null>(null);
-  const animationRef = useRef<number>();
+  const animationRef = useRef<number | undefined>(undefined);
 
   // Generate real waveform data from audio file
   useEffect(() => {
@@ -96,7 +99,7 @@ export function ModernAudioPlayer({ audioUrl, title, artist, ticker, description
         
         // Create a more realistic mock waveform that varies
         const generateRealisticWaveform = () => {
-          const data = [];
+          const data: number[] = [];
           for (let i = 0; i < 100; i++) {
             // Create a more complex pattern with multiple frequency components
             const lowFreq = Math.sin(i * 0.1) * 0.3;
@@ -122,10 +125,10 @@ export function ModernAudioPlayer({ audioUrl, title, artist, ticker, description
         setWaveformData(waveformData);
         console.log('✅ Simplified waveform generated with', waveformData.length, 'data points');
         
-      } catch (error) {
-        console.error('Failed to generate waveform:', error);
+      } catch (err) {
+        console.error('Failed to generate waveform:', err);
         // Fallback to mock data if real analysis fails
-        const mockData = [];
+        const mockData: number[] = [];
         for (let i = 0; i < 100; i++) {
           const base = Math.sin(i * 0.1) * 0.5 + 0.5;
           const variation = Math.random() * 0.4 + 0.3;
@@ -139,6 +142,7 @@ export function ModernAudioPlayer({ audioUrl, title, artist, ticker, description
     };
 
     generateRealWaveform();
+    // audioUrl is the only dependency
   }, [audioUrl]);
 
   // Setup audio analysis when audio element is ready
@@ -159,15 +163,15 @@ export function ModernAudioPlayer({ audioUrl, title, artist, ticker, description
         analyserNode.connect(context.destination);
         
         const bufferLength = analyserNode.frequencyBinCount;
-        const dataArray = new Uint8Array(bufferLength);
+  const dataArray: Uint8Array = new Uint8Array(bufferLength);
         
         setAudioContext(context);
         setAnalyser(analyserNode);
         setFrequencyData(dataArray);
         
         console.log('✅ Audio analysis setup complete');
-      } catch (error) {
-        console.error('Failed to setup audio analysis:', error);
+      } catch (err) {
+        console.error('Failed to setup audio analysis:', err);
       }
     };
 
@@ -191,7 +195,8 @@ export function ModernAudioPlayer({ audioUrl, title, artist, ticker, description
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [audioContext]);
+    // audioContext, animationRef are dependencies
+  }, [audioContext, animationRef]);
 
   // Real-time dancing visualizer
   useEffect(() => {
@@ -210,47 +215,49 @@ export function ModernAudioPlayer({ audioUrl, title, artist, ticker, description
       ctx.fillStyle = '#111827';
       ctx.fillRect(0, 0, width, height);
 
-      if (analyser && frequencyData && isPlaying) {
-        // Get real-time frequency data
-        analyser.getByteFrequencyData(frequencyData);
-        
+      if (analyser && isPlaying) {
+        // Use a local Uint8Array to avoid TS DOM type issues
+        const bufferLength = analyser.frequencyBinCount;
+        const freqData = new Uint8Array(bufferLength);
+        analyser.getByteFrequencyData(freqData);
+
         const barCount = 64; // Number of bars to display
         const barWidth = width / barCount;
-        
+
         // Draw frequency bars that dance with the music
         for (let i = 0; i < barCount; i++) {
-          const barHeight = (frequencyData[i] / 255) * height * 0.8;
+          const barHeight = (freqData[i] / 255) * height * 0.8;
           const x = i * barWidth;
           const y = height - barHeight;
-          
+
           // Create dynamic colors based on frequency intensity
-          const intensity = frequencyData[i] / 255;
+          const intensity = freqData[i] / 255;
           let hue = 120; // Start with green
-          
+
           if (intensity > 0.7) hue = 280; // Purple for high intensity
           else if (intensity > 0.4) hue = 200; // Blue for medium
           else if (intensity > 0.2) hue = 160; // Teal for low-medium
-          
+
           const saturation = 70 + (intensity * 30); // More saturated when louder
           const lightness = 40 + (intensity * 40); // Brighter when louder
-          
+
           ctx.fillStyle = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
-          
+
           // Draw bars with glow effect
           ctx.shadowColor = ctx.fillStyle;
           ctx.shadowBlur = intensity * 10;
           ctx.fillRect(x, y, barWidth - 2, barHeight);
           ctx.shadowBlur = 0;
-          
+
           // Add extra glow for high frequencies
           if (intensity > 0.6) {
             ctx.fillStyle = `hsl(${hue}, 100%, 80%)`;
             ctx.fillRect(x + 1, y + barHeight * 0.8, barWidth - 4, barHeight * 0.2);
           }
         }
-        
+
         // Bass pulse removed - clean bar-only visualizer
-        
+
       } else {
         // Static waveform when not playing
         const progress = duration > 0 ? currentTime / duration : 0;
@@ -293,7 +300,7 @@ export function ModernAudioPlayer({ audioUrl, title, artist, ticker, description
         cancelAnimationFrame(animationId);
       }
     };
-  }, [analyser, frequencyData, isPlaying, currentTime, duration, waveformData]);
+  }, [analyser, frequencyData, isPlaying, currentTime, duration, waveformData, animationRef]);
 
   const togglePlayPause = async () => {
     if (!audioRef.current) return;
